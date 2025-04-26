@@ -10,7 +10,7 @@ Simple Binary Dictionary Protocol (SBDP) ライブラリ
 対応する型は以下の通りです:
   - int64   : 8バイト（符号付き64ビット整数）
   - uint64  : 8バイト（符号なし64ビット整数）
-  - float   : 4バイト（IEEE754形式の浮動小数点数）
+  - float64 : 8バイト（IEEE754形式の浮動小数点数）
   - string  : 先に4バイトの長さ情報、その後UTF-8エンコードされた文字列
   - binary  : 先に4バイトの長さ情報、その後バイナリデータ本体
 
@@ -19,7 +19,7 @@ Simple Binary Dictionary Protocol (SBDP) ライブラリ
   - 型コード: 1バイト
       1 : int64
       2 : uint64
-      3 : float
+      3 : float64
       4 : string
       5 : binary
   - 値: 型に応じたバイナリ表現
@@ -30,10 +30,10 @@ Simple Binary Dictionary Protocol (SBDP) ライブラリ
   >>> from sbdp import send_message, recv_message
   >>> # ソケットを利用した送受信例（クライアント側など）
   >>> message = {
-  ...     "age":   ("int64", 30),
-  ...     "uid":   ("uint64", 1234567890123456789),
-  ...     "price": ("float", 9.99),
-  ...     "name":  ("string", "Alice")
+  ...     "age":   ("int64",   30),
+  ...     "uid":   ("uint64",  1234567890123456789),
+  ...     "price": ("float64", 9.99),
+  ...     "name":  ("string",  "Alice")
   ... }
   >>> send_message(sock, message)
   >>> response = recv_message(sock)
@@ -45,7 +45,7 @@ import socket
 # 型コードの定義
 TYPE_INT64   = 1
 TYPE_UINT64  = 2
-TYPE_FLOAT   = 3
+TYPE_FLOAT64 = 3
 TYPE_STRING  = 4
 TYPE_BINARY  = 5
 
@@ -74,9 +74,9 @@ def encode_message(data):
         elif typ == "uint64":
             parts.append(struct.pack('!B', TYPE_UINT64))
             parts.append(struct.pack('!Q', value))
-        elif typ == "float":
-            parts.append(struct.pack('!B', TYPE_FLOAT))
-            parts.append(struct.pack('!f', value))
+        elif typ == "float64":
+            parts.append(struct.pack('!B', TYPE_FLOAT64))
+            parts.append(struct.pack('!d', value))
         elif typ == "string":
             parts.append(struct.pack('!B', TYPE_STRING))
             value_bytes = value.encode('utf-8')
@@ -127,10 +127,10 @@ def decode_message(message_bytes):
             value = struct.unpack('!Q', payload[offset:offset+8])[0]
             offset += 8
             result[key] = ("uint64", value)
-        elif type_code == TYPE_FLOAT:
-            value = struct.unpack('!f', payload[offset:offset+4])[0]
-            offset += 4
-            result[key] = ("float", value)
+        elif type_code == TYPE_FLOAT64:
+            value = struct.unpack('!d', payload[offset:offset+8])[0]
+            offset += 8
+            result[key] = ("float64", value)
         elif type_code == TYPE_STRING:
             str_length = struct.unpack('!I', payload[offset:offset+4])[0]
             offset += 4

@@ -17,13 +17,11 @@ C++のバインディングではなく、**完全に Python で実装された�
 |----------|--------------------------------------------|
 | `int64`  | 8バイトの符号付き整数（big endian）         |
 | `uint64` | 8バイトの符号なし整数（big endian）         |
-| `float`  | 4バイト、IEEE754形式（big endian）         |
+| `float64`| 8バイト、IEEE754 double形式（big endian）  |
 | `string` | UTF-8文字列（4バイト長付き）               |
 | `binary` | バイナリデータ（4バイト長付き）            |
 
----
-
-## ️ 使用例
+## 使用例
 
 ```python
 from sbdp import send_message, recv_message
@@ -31,7 +29,7 @@ from sbdp import send_message, recv_message
 message = {
     "age":   ("int64", 30),
     "uid":   ("uint64", 1234567890123456789),
-    "price": ("float", 9.99),
+    "price": ("float64", 9.99),
     "name":  ("string", "Alice")
 }
 send_message(sock, message)
