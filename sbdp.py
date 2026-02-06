@@ -49,7 +49,7 @@ TYPE_FLOAT64 = 3
 TYPE_STRING  = 4
 TYPE_BINARY  = 5
 
-# Protocol numeric fields are encoded in network byte order (big endian).
+# プロトコルの数値フィールドはネットワークバイトオーダー（ビッグエンディアン）でエンコードされます。
 FMT_U8 = '!B'
 FMT_U16 = '!H'
 FMT_U32 = '!I'
