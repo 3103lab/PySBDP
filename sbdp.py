@@ -49,6 +49,14 @@ TYPE_FLOAT64 = 3
 TYPE_STRING  = 4
 TYPE_BINARY  = 5
 
+# プロトコルの数値フィールドはネットワークバイトオーダー（ビッグエンディアン）でエンコードされます。
+FMT_U8 = '!B'
+FMT_U16 = '!H'
+FMT_U32 = '!I'
+FMT_I64 = '!q'
+FMT_U64 = '!Q'
+FMT_F64 = '!d'
+
 def encode_message(data):
     """
     メッセージをエンコードする
@@ -65,31 +73,31 @@ def encode_message(data):
         key_bytes = key.encode('utf-8')
         key_length = len(key_bytes)
         # キー長（2バイト、ネットワークバイトオーダー）
-        parts.append(struct.pack('!H', key_length))
+        parts.append(struct.pack(FMT_U16, key_length))
         parts.append(key_bytes)
         # 型コード（1バイト）および値
         if typ == "int64":
-            parts.append(struct.pack('!B', TYPE_INT64))
-            parts.append(struct.pack('!q', value))
+            parts.append(struct.pack(FMT_U8, TYPE_INT64))
+            parts.append(struct.pack(FMT_I64, value))
         elif typ == "uint64":
-            parts.append(struct.pack('!B', TYPE_UINT64))
-            parts.append(struct.pack('!Q', value))
+            parts.append(struct.pack(FMT_U8, TYPE_UINT64))
+            parts.append(struct.pack(FMT_U64, value))
         elif typ == "float64":
-            parts.append(struct.pack('!B', TYPE_FLOAT64))
-            parts.append(struct.pack('!d', value))
+            parts.append(struct.pack(FMT_U8, TYPE_FLOAT64))
+            parts.append(struct.pack(FMT_F64, value))
         elif typ == "string":
-            parts.append(struct.pack('!B', TYPE_STRING))
+            parts.append(struct.pack(FMT_U8, TYPE_STRING))
             value_bytes = value.encode('utf-8')
-            parts.append(struct.pack('!I', len(value_bytes)))  # 4バイトの文字列長
+            parts.append(struct.pack(FMT_U32, len(value_bytes)))  # 4バイトの文字列長
             parts.append(value_bytes)
         elif typ == "binary":
-            parts.append(struct.pack('!B', TYPE_BINARY))
-            parts.append(struct.pack('!I', len(value)))
+            parts.append(struct.pack(FMT_U8, TYPE_BINARY))
+            parts.append(struct.pack(FMT_U32, len(value)))
             parts.append(value)
         else:
             raise ValueError(f"不明な型: {typ}")
     payload = b"".join(parts)
-    header = struct.pack('!I', len(payload))
+    header = struct.pack(FMT_U32, len(payload))
     return header + payload
 
 def decode_message(message_bytes):
@@ -104,7 +112,7 @@ def decode_message(message_bytes):
     """
     if len(message_bytes) < 4:
         raise ValueError("メッセージが短すぎます")
-    total_length = struct.unpack('!I', message_bytes[:4])[0]
+    total_length = struct.unpack(FMT_U32, message_bytes[:4])[0]
     if len(message_bytes) < 4 + total_length:
         raise ValueError("不完全なメッセージです")
     payload = message_bytes[4:4+total_length]
@@ -112,33 +120,33 @@ def decode_message(message_bytes):
     result = {}
     while offset < len(payload):
         # キーの長さ（2バイト）
-        key_length = struct.unpack('!H', payload[offset:offset+2])[0]
+        key_length = struct.unpack(FMT_U16, payload[offset:offset+2])[0]
         offset += 2
         key = payload[offset:offset+key_length].decode('utf-8')
         offset += key_length
         # 型コード（1バイト）
-        type_code = struct.unpack('!B', payload[offset:offset+1])[0]
+        type_code = struct.unpack(FMT_U8, payload[offset:offset+1])[0]
         offset += 1
         if type_code == TYPE_INT64:
-            value = struct.unpack('!q', payload[offset:offset+8])[0]
+            value = struct.unpack(FMT_I64, payload[offset:offset+8])[0]
             offset += 8
             result[key] = ("int64", value)
         elif type_code == TYPE_UINT64:
-            value = struct.unpack('!Q', payload[offset:offset+8])[0]
+            value = struct.unpack(FMT_U64, payload[offset:offset+8])[0]
             offset += 8
             result[key] = ("uint64", value)
         elif type_code == TYPE_FLOAT64:
-            value = struct.unpack('!d', payload[offset:offset+8])[0]
+            value = struct.unpack(FMT_F64, payload[offset:offset+8])[0]
             offset += 8
             result[key] = ("float64", value)
         elif type_code == TYPE_STRING:
-            str_length = struct.unpack('!I', payload[offset:offset+4])[0]
+            str_length = struct.unpack(FMT_U32, payload[offset:offset+4])[0]
             offset += 4
             value = payload[offset:offset+str_length].decode('utf-8')
             offset += str_length
             result[key] = ("string", value)
         elif type_code == TYPE_BINARY:
-            bin_length = struct.unpack('!I', payload[offset:offset+4])[0]
+            bin_length = struct.unpack(FMT_U32, payload[offset:offset+4])[0]
             offset += 4
             value = payload[offset:offset+bin_length]
             offset += bin_length
@@ -190,7 +198,7 @@ def recv_message(sock):
     header = recvall(sock, 4)
     if len(header) < 4:
         raise RuntimeError("ヘッダの受信に失敗しました")
-    total_length = struct.unpack('!I', header)[0]
+    total_length = struct.unpack(FMT_U32, header)[0]
     payload = recvall(sock, total_length)
     if len(payload) < total_length:
         raise RuntimeError("ペイロードの受信に失敗しました")
